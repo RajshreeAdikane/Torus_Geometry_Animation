@@ -2,11 +2,8 @@
 uniform float uTime;
 varying vec3 vNormal;
 varying vec3 vPosition;
-varying vec2 vUv; // UV coordinates should be 2D
-varying vec3 vPattern;
-uniform vec2 uMouse;
+varying vec2 vUv; 
 
-// Constants
 const float PI = 3.14159265359;
 
 // Hash function
@@ -64,7 +61,7 @@ float pnoise(vec3 P) {
 }
 
 void main() {
-    float pattern = clamp((abs(vUv.x-0.5)-0.3)*3.0, 0.0,1.f); // Access the x component of vUv
+    float pattern = clamp((abs(vUv.x-0.5)-0.3)*3.0, 0.0,1.f); 
     float noise = pnoise(vec3(vPosition.z*50.0));
     vec3 purple = vec3(0.498,0.2039, 0.8314)/vec3(0.4941, 0.4941,0.051);
     vec3 color = vec3(noise)*purple;
