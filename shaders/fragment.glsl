@@ -1,69 +1,56 @@
-// fragmentShader.glsl
+// export default /*glsl*/ 
+
 uniform float uTime;
+uniform vec2 uResolution;
+uniform float uDisplace;
+uniform float uSpread;
+uniform float uNoise;
+
 varying vec3 vNormal;
 varying vec3 vPosition;
-varying vec2 vUv; 
+varying vec2 vUv;
+
 
 const float PI = 3.14159265359;
+#define MOD3 vec3(.1031,.11369,.13787)
 
-// Hash function
 vec3 hash33(vec3 p3) {
-    p3 = fract(p3 * 0.1031);
-    p3 += dot(p3, p3.yzx + 33.33);
-    return fract((p3.xxy + p3.yzz) * p3.zyx);
+    p3 = fract(p3 * MOD3);
+    p3 += dot(p3, p3.yxz + 19.19);
+    return -1.0 + 2.0 * fract(vec3((p3.x + p3.y) * p3.z, (p3.x + p3.z) * p3.y, (p3.y + p3.z) * p3.x));
 }
 
-// Perlin noise function
-float pnoise(vec3 P) {
-    vec3 Pi = floor(P);
-    vec3 Pf = fract(P);
-    vec3 Pf_min = Pf - vec3(1.0);
-
-    vec3 hash_x0 = hash33(Pi);
-    vec3 hash_x1 = hash33(Pi + vec3(1.0, 0.0, 0.0));
-    vec3 hash_y0 = hash33(Pi + vec3(0.0, 1.0, 0.0));
-    vec3 hash_y1 = hash33(Pi + vec3(1.0, 1.0, 0.0));
-    vec3 hash_z0 = hash33(Pi + vec3(0.0, 0.0, 1.0));
-    vec3 hash_z1 = hash33(Pi + vec3(1.0, 0.0, 1.0));
-    
-    vec3 hash_yz0 = hash33(Pi + vec3(0.0, 1.0, 1.0));
-    vec3 hash_yz1 = hash33(Pi + vec3(1.0, 1.0, 1.0));
-    
-    vec3 g000 = hash_x0;
-    vec3 g100 = hash_x1;
-    vec3 g010 = hash_y0;
-    vec3 g110 = hash_y1;
-    vec3 g001 = hash_z0;
-    vec3 g101 = hash_z1;
-    vec3 g011 = hash_yz0;
-    vec3 g111 = hash_yz1;
-    
-    float n000 = dot(g000, Pf);
-    float n100 = dot(g100, vec3(Pf.x - 1.0, Pf.y, Pf.z));
-    float n010 = dot(g010, vec3(Pf.x, Pf.y - 1.0, Pf.z));
-    float n110 = dot(g110, vec3(Pf.x - 1.0, Pf.y - 1.0, Pf.z));
-    float n001 = dot(g001, vec3(Pf.x, Pf.y, Pf.z - 1.0));
-    float n101 = dot(g101, vec3(Pf.x - 1.0, Pf.y, Pf.z - 1.0));
-    float n011 = dot(g011, vec3(Pf.x, Pf.y - 1.0, Pf.z - 1.0));
-    float n111 = dot(g111, vec3(Pf.x - 1.0, Pf.y - 1.0, Pf.z - 1.0));
-    
-    vec3 fade_xyz = Pf * Pf * Pf * (Pf * (Pf * 6.0 - 15.0) + 10.0);
-    float n_z0 = mix(n000, n100, fade_xyz.x);
-    float n_z1 = mix(n010, n110, fade_xyz.x);
-    float n_y0 = mix(n_z0, n_z1, fade_xyz.y);
-    
-    n_z0 = mix(n001, n101, fade_xyz.x);
-    n_z1 = mix(n011, n111, fade_xyz.x);
-    float n_y1 = mix(n_z0, n_z1, fade_xyz.y);
-    
-    float n = mix(n_y0, n_y1, fade_xyz.z);
-    return 2.2 * n;
+float pnoise(vec3 p) {
+    vec3 pi = floor(p);
+    vec3 pf = p - pi;
+    vec3 w = pf * pf * (3.0 - 2.0 * pf);
+    return mix(
+        mix(
+            mix(dot(pf - vec3(0.0, 0.0, 0.0), hash33(pi + vec3(0.0, 0.0, 0.0))),
+                dot(pf - vec3(1.0, 0.0, 0.0), hash33(pi + vec3(1.0, 0.0, 0.0))),
+                w.x),
+            mix(dot(pf - vec3(0.0, 0.0, 1.0), hash33(pi + vec3(0.0, 0.0, 1.0))),
+                dot(pf - vec3(1.0, 0.0, 1.0), hash33(pi + vec3(1.0, 0.0, 1.0))),
+                w.x),
+            w.z),
+        mix(
+            mix(dot(pf - vec3(0.0, 1.0, 0.0), hash33(pi + vec3(0.0, 1.0, 0.0))),
+                dot(pf - vec3(1.0, 1.0, 0.0), hash33(pi + vec3(1.0, 1.0, 0.0))),
+                w.x),
+            mix(dot(pf - vec3(0.0, 1.0, 1.0), hash33(pi + vec3(0.0, 1.0, 1.0))),
+                dot(pf - vec3(1.0, 1.0, 1.0), hash33(pi + vec3(1.0, 1.0, 1.0))),
+                w.x),
+            w.z),
+        w.y);
 }
 
 void main() {
-    float pattern = clamp((abs(vUv.x-0.5)-0.3)*3.0, 0.0,1.f); 
-    float noise = pnoise(vec3(vPosition.z*50.0));
-    vec3 purple = vec3(0.498,0.2039, 0.8314)/vec3(0.4941, 0.4941,0.051);
-    vec3 color = vec3(noise)*purple;
-    gl_FragColor = vec4(vec3(color),1.0);
+   float pat = pnoise(vec3(vUv * uNoise, sin(uTime) * 1.4)) * uDisplace;
+    float proximity = abs(vUv.x - (0.5 + sin(uTime) / (12.0 * uSpread)));
+    float noise = pnoise(vec3(vPosition.z * 50.0));
+    vec3 full = pat * vec3(clamp(0.23 * uSpread - proximity, 0.0, 1.0));
+    vec3 newPosition = vPosition + vNormal * full;
+    vec3 purple = vec3(0.498, 0.2039, 0.8314) / vec3(0.4941, 0.4941, 0.051);
+    vec3 color = vec3(pnoise(vec3(1.0 - newPosition.z * 35.0)) * 40.0) * (0.01 - full) * purple;
+    gl_FragColor = vec4(color, 1.0);
 }
